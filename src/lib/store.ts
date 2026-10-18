@@ -35,6 +35,11 @@ export function setOverride(id: string): void {
   write(K_OVERRIDES, o);
 }
 
+export function clearCheckins(): void {
+  localStorage.removeItem(K_CHECKINS);
+  localStorage.removeItem(K_OVERRIDES);
+}
+
 function q(s: string) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

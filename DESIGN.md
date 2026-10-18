@@ -20,6 +20,11 @@ Tool internal booth Race Pack Collection: gelap, kontras tinggi, terbaca
 dari jarak 1–2 m. Layout dua kolom (kamera + input scanner di kiri, kartu
 hasil besar di kanan), stack vertikal di layar sempit.
 
+Mendukung pilihan orientasi layar:
+- **Auto (Deteksi Layar):** Otomatis mendeteksi orientasi monitor (horizontal atau vertikal).
+- **Landscape (16:9):** Optimal untuk monitor PC, laptop, atau smart TV mendatar.
+- **Portrait (9:16):** Format standing kiosk, totem vertical, atau digital signage tinggi dengan kartu BIB besar menyerupai lanyard race pass resmi.
+
 Warna status adalah bahasa utamanya: hijau = valid, amber = unpaid/duplikat,
 merah = tidak terdaftar. Bip (Web Audio) membedakan keempatnya supaya
 operator tidak wajib menatap layar. Netral slate gelap + aksen merah
