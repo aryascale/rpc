@@ -18,6 +18,7 @@ import {
   clearCheckins,
 } from "../lib/store";
 import { useRfidBridge } from "../lib/rfidBridge";
+import { useQrScanner, QR_ELEMENT_ID } from "../lib/useQrScanner";
 import {
   type AppSettings,
   type DisplayOrientation,
@@ -248,7 +249,14 @@ export default function DisplayMode({
   startScanFlowRef.current = startScanFlow;
 
   // ─── RFID SSE bridge ──────────────────────────────────────────────────────
-  useRfidBridge((code) => startScanFlowRef.current(code), true);
+const scanMode = settings.scanMode ?? "rfid";
+  const rfidEnabled = scanMode === "rfid" || scanMode === "both";
+  const qrEnabled   = scanMode === "qr"   || scanMode === "both";
+
+  useRfidBridge((code) => startScanFlowRef.current(code), rfidEnabled);
+
+  // ─── Camera QR scanner ────────────────────────────────────────────────────
+  useQrScanner((code) => startScanFlowRef.current(code), qrEnabled);
 
   // ─── Hardware USB scanner (keyboard-mode) ─────────────────────────────────
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -326,6 +334,56 @@ export default function DisplayMode({
           aria-hidden="true"
           autoComplete="off"
         />
+
+        {/* ── QR Camera Overlay (qr / both mode, idle phase only) ───────── */}
+        {qrEnabled && (
+          <div
+            className={`absolute z-10 transition-all duration-500 ${
+              phase === "idle"
+                ? "opacity-100 pointer-events-auto"
+                : "opacity-0 pointer-events-none"
+            } ${
+              isPortrait
+                ? "bottom-6 left-1/2 -translate-x-1/2"
+                : "bottom-6 right-6"
+            }`}
+          >
+            <div className="relative bg-slate-950/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 z-10 pointer-events-none">
+                <span className="absolute top-3 left-3 w-7 h-7 border-t-2 border-l-2 border-red-500 rounded-tl-lg" />
+                <span className="absolute top-3 right-3 w-7 h-7 border-t-2 border-r-2 border-red-500 rounded-tr-lg" />
+                <span className="absolute bottom-9 left-3 w-7 h-7 border-b-2 border-l-2 border-red-500 rounded-bl-lg" />
+                <span className="absolute bottom-9 right-3 w-7 h-7 border-b-2 border-r-2 border-red-500 rounded-br-lg" />
+                <div
+                  className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent"
+                  style={{ animation: "qr-scanline 2s ease-in-out infinite", top: "10%" }}
+                />
+              </div>
+              <div
+                id={QR_ELEMENT_ID}
+                style={{
+                  width: isPortrait ? 240 : 200,
+                  height: isPortrait ? 240 : 200,
+                }}
+              />
+              <div className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-950/95">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                  {scanMode === "both" ? "Scan QR · RFID" : "Scan QR Code"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          @keyframes qr-scanline {
+            0%   { top: 8%;  opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { opacity: 1; }
+            100% { top: 82%; opacity: 0; }
+          }
+        `}</style>
 
         {/* ── Idle iframe — always rendered underneath ──────────────── */}
         <iframe

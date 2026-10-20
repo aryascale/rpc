@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contoh QR Code Test Scanner - RPC Kiosk</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .custom-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .custom-box-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: #fff;
+      font-size: 1rem;
+    }
+    input:focus {
+      outline: 2px solid var(--accent);
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #64748b;
+    }
+    .qr-wrapper {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: inline-flex;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    .qr-wrapper img {
+      display: block;
+      width: 180px;
+      height: 180px;
+    }
+    .bib-tag {
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #38bdf8;
+      margin-bottom: 0.25rem;
+    }
+    .name {
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin-bottom: 0.25rem;
+    }
+    .category-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .payload {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: #0f172a;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      word-break: break-all;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Contoh QR Code Scanner RPC</h1>
+      <p class="subtitle">Arahkan kamera scanner kiosk ke salah satu QR Code di bawah untuk testing</p>
+    </header>
+
+    <div class="custom-box">
+      <label style="font-size: 0.875rem; color: #cbd5e1; font-weight: 500;">Coba Generate QR Custom Sendiri:</label>
+      <div class="custom-box-row">
+        <input type="text" id="customInput" placeholder="Masukkan BIB, EPC, atau URL..." value="1017" />
+        <button onclick="updateCustomQr()">Generate QR</button>
+      </div>
+      <div id="customResult" style="display: none; align-items: center; justify-content: center; flex-direction: column; margin-top: 1rem;">
+        <div class="qr-wrapper">
+          <img id="customQrImg" src="" alt="Custom QR" />
+        </div>
+        <div class="payload" id="customPayload"></div>
+      </div>
+    </div>
+
+    <div class="grid" id="presetGrid">
+      <!-- Cards rendered via JS -->
+    </div>
+  </div>
+
+  <script>
+    const samples = [
+      {
+        bib: "1017",
+        name: "Budi Santoso",
+        cat: "10K • Size L",
+        data: "1017",
+        note: "Raw BIB Code",
+      },
+      {
+        bib: "2019",
+        name: "Joko Anwar",
+        cat: "5K • Size M",
+        data: "2019",
+        note: "Raw BIB Code",
+      },
+      {
+        bib: "2020",
+        name: "Rina Marlina",
+        cat: "5K • Size S",
+        data: "2020",
+        note: "Raw BIB Code",
+      },
+      {
+        bib: "3021",
+        name: "Farid Ghani",
+        cat: "21K • Size XL",
+        data: "3021",
+        note: "Raw BIB Code",
+      },
+      {
+        bib: "4042",
+        name: "Dewi Sartika",
+        cat: "42K • Size M",
+        data: "4042",
+        note: "Raw BIB Code",
+      },
+      {
+        bib: "3021 (URL)",
+        name: "Farid Ghani (Verify Link)",
+        cat: "UUID Format",
+        data: "https://lumpat.co.id/verify/55555555-5555-5555-5555-555555555555",
+        note: "URL Verify",
+      },
+      {
+        bib: "1017 (EPC)",
+        name: "Budi Santoso (EPC Hex)",
+        cat: "Hex EPC",
+        data: "E280116060000204A8B9C101",
+        note: "RFID EPC Hex",
+      },
+      {
+        bib: "1017 (JSON)",
+        name: "Budi Santoso (JSON)",
+        cat: "JSON Payload",
+        data: '{"bib":"1017"}',
+        note: "JSON Format",
+      }
+    ];
+
+    const grid = document.getElementById("presetGrid");
+    samples.forEach(s => {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(s.data)}`;
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="qr-wrapper">
+          <img src="${qrUrl}" alt="QR ${s.bib}" loading="lazy" />
+        </div>
+        <div class="bib-tag">BIB ${s.bib}</div>
+        <div class="name">${s.name}</div>
+        <div class="category-badge">${s.cat}</div>
+        <div class="payload" title="${s.data}">Data: ${s.data}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    function updateCustomQr() {
+      const val = document.getElementById("customInput").value.trim();
+      if (!val) return;
+      const res = document.getElementById("customResult");
+      const img = document.getElementById("customQrImg");
+      const payload = document.getElementById("customPayload");
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(val)}`;
+      payload.textContent = "Data: " + val;
+      res.style.display = "flex";
+    }
+  </script>
+</body>
+</html>

@@ -3,11 +3,12 @@ import {
   type AppSettings,
   type DisplayDesign,
   type DisplayOrientation,
+  type ScanMode,
   DESIGN_DEFAULTS,
   PRESET_THEMES,
   buildIdleSrcdoc,
 } from "../lib/settings";
-import { type CsvData, parseFile, getSampleData } from "../lib/csv";
+import { type CsvData, parseFile, getSampleData, getAvailableFields } from "../lib/csv";
 import { loadCheckins, clearCheckins } from "../lib/store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export default function SettingsMode({
         )}
         {tab === "api" && <ApiTab />}
         {tab === "design" && (
-          <DesignTab design={design} onChange={updateDesign} />
+          <DesignTab design={design} onChange={updateDesign} data={data} />
         )}
         {tab === "launch" && (
           <LaunchTab data={data} settings={settings} onLaunch={onLaunch} onSettingsChange={onSettingsChange} />
@@ -533,10 +534,13 @@ function ApiTab() {
 function DesignTab({
   design,
   onChange,
+  data,
 }: {
   design: DisplayDesign;
   onChange: (patch: Partial<DisplayDesign>) => void;
+  data: CsvData | null;
 }) {
+  const avail = getAvailableFields(data);
   function previewIdle() {
     const win = window.open("", "_blank");
     if (!win) return;
@@ -805,39 +809,68 @@ function DesignTab({
             </div>
           </div>
           <div className="pt-4 border-t border-slate-100">
-            <Label>Komponen yang Ditampilkan di Layar Hasil Scan</Label>
+            <div className="flex items-center justify-between mb-1.5">
+              <Label>Komponen yang Ditampilkan di Layar Hasil Scan</Label>
+              {data && (
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  📄 {data.fileName}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 mb-3">
-              Pilih informasi peserta yang ingin ditampilkan saat scan berhasil
+              Pilih informasi yang ditampilkan saat scan berhasil.{" "}
+              <span className="text-amber-600 font-semibold">Kolom tidak tersedia di data</span>{" "}
+              akan dinonaktifkan otomatis.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { id: "showBib", label: "Nomor BIB", icon: "🔢", value: design.showBib },
-                { id: "showName", label: "Nama Peserta", icon: "👤", value: design.showName },
-                { id: "showCategory", label: "Kategori Lomba", icon: "🏃", value: design.showCategory },
-                { id: "showTshirtSize", label: "Ukuran Kaos / Baju", icon: "👕", value: design.showTshirtSize },
-                { id: "showGender", label: "Gender", icon: "⚧️", value: design.showGender },
-                { id: "showStatus", label: "Status Check-in", icon: "✅", value: design.showStatus },
-                { id: "showEventName", label: "Nama Event (Header)", icon: "🏷️", value: design.showEventName },
-                { id: "showEpc", label: "Kode RFID / EPC", icon: "📡", value: design.showEpc },
-              ].map((item) => (
-                <label
-                  key={item.id}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                    item.value
-                      ? "bg-red-50/50 border-red-300 text-slate-900 shadow-xs"
-                      : "bg-slate-50/60 border-slate-200 text-slate-400 hover:bg-slate-100/60"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.value}
-                    onChange={(e) => onChange({ [item.id]: e.target.checked })}
-                    className="w-4 h-4 accent-red-600 rounded cursor-pointer"
-                  />
-                  <span className="text-base leading-none">{item.icon}</span>
-                  <span className="text-xs font-bold leading-tight">{item.label}</span>
-                </label>
-              ))}
+              {([
+                { id: "showBib",       label: "Nomor BIB",         icon: "🔢", value: design.showBib,       availKey: "bib" },
+                { id: "showName",      label: "Nama Peserta",       icon: "👤", value: design.showName,      availKey: "name" },
+                { id: "showCategory",  label: "Kategori Lomba",     icon: "🏃", value: design.showCategory,  availKey: "category" },
+                { id: "showTshirtSize",label: "Ukuran Kaos / Baju", icon: "👕", value: design.showTshirtSize,availKey: "tshirtSize" },
+                { id: "showGender",    label: "Gender",             icon: "⚧️", value: design.showGender,    availKey: "gender" },
+                { id: "showStatus",    label: "Status Check-in",    icon: "✅", value: design.showStatus,    availKey: "paymentStatus" },
+                { id: "showEventName", label: "Nama Event (Header)",icon: "🏷️", value: design.showEventName, availKey: "eventName" },
+                { id: "showEpc",       label: "Kode RFID / EPC",    icon: "📡", value: design.showEpc,       availKey: "epc" },
+              ] as const).map((item) => {
+                const isAvail = avail[item.availKey as keyof typeof avail];
+                const isDisabled = !isAvail;
+                return (
+                  <label
+                    key={item.id}
+                    title={isDisabled ? `Kolom '${item.availKey}' tidak ditemukan di master data` : undefined}
+                    className={`relative flex flex-col gap-1.5 p-3 rounded-xl border transition-all select-none ${
+                      isDisabled
+                        ? "bg-slate-50/40 border-slate-200 text-slate-300 cursor-not-allowed opacity-60"
+                        : item.value
+                        ? "bg-red-50/50 border-red-300 text-slate-900 shadow-xs cursor-pointer"
+                        : "bg-slate-50/60 border-slate-200 text-slate-400 hover:bg-slate-100/60 cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={item.value && !isDisabled}
+                        disabled={isDisabled}
+                        onChange={(e) => !isDisabled && onChange({ [item.id]: e.target.checked })}
+                        className="w-4 h-4 accent-red-600 rounded cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <span className="text-base leading-none">{item.icon}</span>
+                      <span className="text-xs font-bold leading-tight">{item.label}</span>
+                    </div>
+                    {isDisabled && (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-500 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5 w-fit">
+                        tidak ada di data
+                      </span>
+                    )}
+                    {!isDisabled && (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-emerald-500 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5 w-fit">
+                        ✓ tersedia
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
             </div>
           </div>
         </Card>
@@ -890,6 +923,16 @@ function LaunchTab({
         ? "🖥️ Landscape (16:9 Monitor / TV Horizontal)"
         : "🔄 Auto (Deteksi Otomatis Sesuai Layar Monitor)",
     },
+    {
+      label: "Mode Scan Input",
+      ok: true,
+      detail:
+        settings.scanMode === "qr"
+          ? "📷 QR Camera (Kamera perangkat)"
+          : settings.scanMode === "both"
+          ? "📷+📡 QR Camera + RFID / USB Scanner"
+          : "📡 RFID / USB Scanner (default)",
+    },
   ];
 
   const canLaunch = !!data;
@@ -931,6 +974,68 @@ function LaunchTab({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Scan Mode Selector ────────────────────────────────── */}
+      <div className="mb-6 p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+        <div className="mb-3">
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-0.5">
+            Mode Input Scan
+          </div>
+          <div className="text-xs text-slate-500 leading-relaxed">
+            Pilih sumber input kode peserta saat display aktif
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            {
+              id: "rfid" as ScanMode,
+              icon: "📡",
+              label: "RFID / USB",
+              desc: "Scanner RFID atau barcode USB keyboard-mode",
+            },
+            {
+              id: "qr" as ScanMode,
+              icon: "📷",
+              label: "QR Camera",
+              desc: "Kamera perangkat baca QR code peserta",
+            },
+            {
+              id: "both" as ScanMode,
+              icon: "📷+📡",
+              label: "Keduanya",
+              desc: "RFID/USB + Kamera QR aktif bersamaan",
+            },
+          ]).map((m) => {
+            const active = (settings.scanMode ?? "rfid") === m.id;
+            return (
+              <button
+                key={m.id}
+                id={`scan-mode-${m.id}`}
+                type="button"
+                onClick={() => onSettingsChange({ ...settings, scanMode: m.id })}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                  active
+                    ? "bg-red-50 border-red-400 ring-2 ring-red-500/20 shadow-sm"
+                    : "bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-slate-100/60"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xl leading-none">{m.icon}</span>
+                  {active && (
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-red-600 text-white px-1.5 py-0.5 rounded-full">
+                      Aktif
+                    </span>
+                  )}
+                </div>
+                <div className={`text-xs font-black ${active ? "text-red-700" : "text-slate-700"}`}>
+                  {m.label}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-tight">{m.desc}</p>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Developer Mode Toggle Card ────────────────────────────── */}

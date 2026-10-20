@@ -540,10 +540,15 @@ export const DESIGN_DEFAULTS: DisplayDesign = {
   showEpc: true,
 };
 
+// ─── Scan Mode ────────────────────────────────────────────────────────────────
+/** How the display listens for scan input. */
+export type ScanMode = "rfid" | "qr" | "both";
+
 // ─── App Settings ──────────────────────────────────────────────────────────────
 export interface AppSettings {
   design: DisplayDesign;
   devMode: boolean; // Jika aktif: memunculkan simulator RPC & tools debug di display mode. Jika nonaktif: layar 100% bersih.
+  scanMode: ScanMode; // 'rfid' = RFID/USB only | 'qr' = camera QR only | 'both' = keduanya
 }
 
 const STORAGE_KEY = 'rpc:settings-v5';
@@ -551,7 +556,7 @@ const STORAGE_KEY = 'rpc:settings-v5';
 export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { devMode: false, design: { ...DESIGN_DEFAULTS } };
+    if (!raw) return { devMode: false, scanMode: "rfid" as ScanMode, design: { ...DESIGN_DEFAULTS } };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     
     // Auto-migrate stale cached CSS that predates portrait orientation support
@@ -568,6 +573,7 @@ export function loadSettings(): AppSettings {
 
     return {
       devMode: parsed.devMode !== undefined ? parsed.devMode : false,
+      scanMode: (parsed.scanMode as ScanMode | undefined) ?? "rfid",
       design: {
         ...DESIGN_DEFAULTS,
         ...d,
@@ -586,7 +592,7 @@ export function loadSettings(): AppSettings {
       },
     };
   } catch {
-    return { devMode: false, design: { ...DESIGN_DEFAULTS } };
+    return { devMode: false, scanMode: "rfid" as ScanMode, design: { ...DESIGN_DEFAULTS } };
   }
 }
 

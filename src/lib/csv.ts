@@ -20,6 +20,57 @@ export interface CsvData {
   fileName: string;
 }
 
+/**
+ * Tracks which Participant fields are actually populated in the loaded dataset.
+ * Used to dynamically enable/disable component visibility toggles in the UI.
+ */
+export interface AvailableFields {
+  bib: boolean;
+  name: boolean;
+  category: boolean;
+  gender: boolean;
+  tshirtSize: boolean;
+  paymentStatus: boolean;
+  epc: boolean;
+  /** eventName is always available — it's set manually by the user, not from CSV */
+  eventName: boolean;
+}
+
+/**
+ * Inspect the loaded CsvData and return which fields have at least one
+ * non-empty value across all participants.
+ */
+export function getAvailableFields(data: CsvData | null): AvailableFields {
+  if (!data || data.list.length === 0) {
+    // No data loaded — treat all as available so nothing gets blocked
+    return {
+      bib: true, name: true, category: true, gender: true,
+      tshirtSize: true, paymentStatus: true, epc: true, eventName: true,
+    };
+  }
+
+  const result: AvailableFields = {
+    bib: false, name: false, category: false, gender: false,
+    tshirtSize: false, paymentStatus: false, epc: false, eventName: true,
+  };
+
+  for (const p of data.list) {
+    if (p.bib) result.bib = true;
+    if (p.name) result.name = true;
+    if (p.category) result.category = true;
+    if (p.gender) result.gender = true;
+    if (p.tshirtSize) result.tshirtSize = true;
+    if (p.paymentStatus) result.paymentStatus = true;
+    if (p.epc) result.epc = true;
+
+    // Early exit if everything found
+    const { eventName: _e, ...checks } = result;
+    if (Object.values(checks).every(Boolean)) break;
+  }
+
+  return result;
+}
+
 export interface Lookup {
   id?: string;
   bib?: string;
